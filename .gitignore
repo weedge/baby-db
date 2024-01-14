@@ -1,0 +1,12 @@
+db
+*.db
+_site/
+TODO
+.vscode/
+__pycache__
+.idea/
+.idea/
+go.work
+# macOS
+*.dSYM
+db.c

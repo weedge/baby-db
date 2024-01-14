@@ -1,0 +1,47 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name":"c-db",
+            "type":"cppdbg",
+            "request": "launch",
+            "program": "${cwd}/db",
+            "args": [
+                "${cwd}/test.db", 
+            ],
+            "environment": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "externalConsole": true,
+            "internalConsoleOptions": "openOnSessionStart",
+            "linux": {
+                "MIMode": "gdb",
+                "internalConsoleOptions": "openOnFirstSessionStart",
+                "miDebuggerPath": "/usr/bin/gdb"
+            },
+            "osx": {
+                "MIMode": "lldb"
+            },
+            "windows": {
+                "MIMode": "gdb",
+                "miDebuggerPath": "C:\\MinGw\\bin\\gdb.exe"
+            }
+        },
+        {
+            "name": "golang-db",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${cwd}/golang/9.go",// 修改对应debug golang 文件
+            "console": "integratedTerminal",//使用终端debug,默认会使用控制台,无法输入
+            "env": {
+                "GO111MODULE": "off"
+            },
+            "args": [
+                "${cwd}/test9.db", 
+                //"<", "${cwd}/tt.txt",
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+    ]
+}
