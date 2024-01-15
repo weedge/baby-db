@@ -3,10 +3,13 @@ db
 _site/
 TODO
 .vscode/
+*.sw*
+*~
 __pycache__
 .idea/
 .idea/
 go.work
+__debug_bin*
 # macOS
 *.dSYM
 db.c

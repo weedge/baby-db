@@ -382,6 +382,38 @@ func leafNodeFind(table *Table, pageNum, key uint32) *Cursor {
 	return cursor
 }
 
+func internalNodeFind(table *Table, pageNum, key uint32) *Cursor {
+	node := getPage(table.pager, pageNum)
+	numKeys := *internalNodeNumKeys(node)
+
+	// Binary search to find index of child to search
+	minIndex := uint32(0)
+	maxIndex := numKeys // there is one more child than key
+
+	for minIndex != maxIndex {
+		index := (minIndex + maxIndex) / 2
+		keyToRight := *internalNodeKey(node, index)
+		if keyToRight >= key {
+			maxIndex = index
+		} else {
+			minIndex = index + 1
+		}
+	}
+
+	childNum := *internalNodeChild(node, minIndex)
+	child := getPage(table.pager, childNum)
+
+	switch getNodeType(child) {
+	case NODE_LEAF:
+		return leafNodeFind(table, childNum, key)
+	case NODE_INTERNAL:
+		return internalNodeFind(table, childNum, key)
+	default:
+		// Handle other node types if needed
+		return nil
+	}
+}
+
 func tableFind(table *Table, key uint32) *Cursor {
 	rootPageNum := table.rootPageNum
 	rootNode := getPage(table.pager, rootPageNum)
@@ -390,8 +422,7 @@ func tableFind(table *Table, key uint32) *Cursor {
 	if nodeType == NODE_LEAF {
 		return leafNodeFind(table, rootPageNum, key)
 	} else {
-		fmt.Println("Need to implement searching an internal node")
-		os.Exit(1)
+		return internalNodeFind(table, rootPageNum, key)
 	}
 	return nil
 }

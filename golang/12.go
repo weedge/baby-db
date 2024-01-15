@@ -46,7 +46,9 @@ const (
 const (
 	LEAF_NODE_NUM_CELLS_SIZE   = 4
 	LEAF_NODE_NUM_CELLS_OFFSET = COMMON_NODE_HEADER_SIZE
-	LEAF_NODE_HEADER_SIZE      = COMMON_NODE_HEADER_SIZE + LEAF_NODE_NUM_CELLS_SIZE
+	LEAF_NODE_NEXT_LEAF_SIZE   = 4
+	LEAF_NODE_NEXT_LEAF_OFFSET = LEAF_NODE_NUM_CELLS_OFFSET + LEAF_NODE_NUM_CELLS_SIZE
+	LEAF_NODE_HEADER_SIZE      = COMMON_NODE_HEADER_SIZE + LEAF_NODE_NUM_CELLS_SIZE + LEAF_NODE_NEXT_LEAF_SIZE
 )
 
 // Leaf Node Body Layout
@@ -178,6 +180,10 @@ func leafNodeValue(node []byte, cellNum uint32) []byte {
 	return node[offset : offset+LEAF_NODE_VALUE_SIZE]
 }
 
+func leafNodeNextLeaf(node []byte) *uint32 {
+	return (*uint32)(unsafe.Pointer(&node[LEAF_NODE_NEXT_LEAF_OFFSET]))
+}
+
 func printConstants() {
 	fmt.Printf("ROW_SIZE: %d\n", ROW_SIZE)
 	fmt.Printf("COMMON_NODE_HEADER_SIZE: %d\n", COMMON_NODE_HEADER_SIZE)
@@ -248,6 +254,7 @@ func initializeLeafNode(node []byte) {
 	setNodeType(node, NODE_LEAF)
 	setNodeRoot(node, false)
 	*leafNodeNumCells(node) = 0
+	*leafNodeNextLeaf(node) = 0 // 0 表示无兄弟节点
 }
 
 func initializeInternalNode(node []byte) {
@@ -341,21 +348,6 @@ func printTree(pager *Pager, pageNum, indentationLevel uint32) {
 	}
 }
 
-func tableStart(table *Table) *Cursor {
-	cursor := &Cursor{
-		table:      table,
-		pageNum:    table.rootPageNum,
-		cellNum:    0,
-		endOfTable: false,
-	}
-
-	rootNode := getPage(table.pager, table.rootPageNum)
-	numCells := *leafNodeNumCells(rootNode)
-	cursor.endOfTable = (numCells == 0)
-
-	return cursor
-}
-
 func leafNodeFind(table *Table, pageNum, key uint32) *Cursor {
 	node := getPage(table.pager, pageNum)
 	numCells := *leafNodeNumCells(node)
@@ -382,6 +374,38 @@ func leafNodeFind(table *Table, pageNum, key uint32) *Cursor {
 	return cursor
 }
 
+func internalNodeFind(table *Table, pageNum, key uint32) *Cursor {
+	node := getPage(table.pager, pageNum)
+	numKeys := *internalNodeNumKeys(node)
+
+	// Binary search to find index of child to search
+	minIndex := uint32(0)
+	maxIndex := numKeys // there is one more child than key
+
+	for minIndex != maxIndex {
+		index := (minIndex + maxIndex) / 2
+		keyToRight := *internalNodeKey(node, index)
+		if keyToRight >= key {
+			maxIndex = index
+		} else {
+			minIndex = index + 1
+		}
+	}
+
+	childNum := *internalNodeChild(node, minIndex)
+	child := getPage(table.pager, childNum)
+
+	switch getNodeType(child) {
+	case NODE_LEAF:
+		return leafNodeFind(table, childNum, key)
+	case NODE_INTERNAL:
+		return internalNodeFind(table, childNum, key)
+	default:
+		// Handle other node types if needed
+		return nil
+	}
+}
+
 func tableFind(table *Table, key uint32) *Cursor {
 	rootPageNum := table.rootPageNum
 	rootNode := getPage(table.pager, rootPageNum)
@@ -390,8 +414,7 @@ func tableFind(table *Table, key uint32) *Cursor {
 	if nodeType == NODE_LEAF {
 		return leafNodeFind(table, rootPageNum, key)
 	} else {
-		fmt.Println("Need to implement searching an internal node")
-		os.Exit(1)
+		return internalNodeFind(table, rootPageNum, key)
 	}
 	return nil
 }
@@ -407,7 +430,15 @@ func cursorAdvance(cursor *Cursor) {
 	node := getPage(cursor.table.pager, pageNum)
 	cursor.cellNum += 1
 	if cursor.cellNum >= *leafNodeNumCells(node) {
-		cursor.endOfTable = true
+		/* 前进到下一个叶子节点 */
+		nextPageNum := *leafNodeNextLeaf(node)
+		if nextPageNum == 0 {
+			/* 这是最右边的叶子节点 */
+			cursor.endOfTable = true
+		} else {
+			cursor.pageNum = nextPageNum
+			cursor.cellNum = 0
+		}
 	}
 }
 
@@ -645,6 +676,8 @@ func leafNodeSplitAndInsert(cursor *Cursor, key uint32, value *Row) {
 	newPageNum := getUnusedPageNum(cursor.table.pager)
 	newNode := getPage(cursor.table.pager, newPageNum)
 	initializeLeafNode(newNode)
+	*leafNodeNextLeaf(newNode) = *leafNodeNextLeaf(oldNode)
+	*leafNodeNextLeaf(oldNode) = newPageNum
 
 	/*
 	  所有现有键以及新键应该均匀分布
@@ -662,7 +695,8 @@ func leafNodeSplitAndInsert(cursor *Cursor, key uint32, value *Row) {
 		destination := leafNodeCell(destinationNode, uint32(indexWithinNode))
 
 		if i == int(cursor.cellNum) {
-			serializeRow(value, destination)
+			serializeRow(value, leafNodeValue(destinationNode, uint32(indexWithinNode)))
+			*leafNodeKey(destinationNode, uint32(indexWithinNode)) = key
 		} else if i > int(cursor.cellNum) {
 			copy(destination, leafNodeCell(oldNode, uint32(i-1))[:LEAF_NODE_CELL_SIZE])
 		} else {
@@ -719,6 +753,15 @@ func executeInsert(statement *Statement, table *Table) ExecuteResult {
 	leafNodeInsert(cursor, rowToInsert.id, rowToInsert)
 
 	return EXECUTE_SUCCESS
+}
+
+func tableStart(table *Table) *Cursor {
+	cursor := tableFind(table, 0)
+	node := getPage(table.pager, cursor.pageNum)
+	numCells := *leafNodeNumCells(node)
+	cursor.endOfTable = numCells == 0
+
+	return cursor
 }
 
 func executeSelect(statement *Statement, table *Table) ExecuteResult {

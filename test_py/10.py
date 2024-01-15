@@ -35,7 +35,7 @@ def test_print_structure_of_3_leaf_node_btree(db_file=""):
     script.append(".btree")
     script.append("insert 15 user15 person15@example.com")
     script.append(".exit")
-    result = run_script(script,db_file=db_file)
+    result = run_script(script,db_file=db_file,is_remove=True)
 
     expected_result = [
         "db > Tree:",
