@@ -52,7 +52,53 @@ def test_prints_structure_of_4_leaf_node_btree(db_file=""):
         ".exit",
     ]
     result = run_script(script,db_file=db_file)
+
+    expected_output = [
+        "db > Tree:",
+        "- internal (size 3)",
+        "  - leaf (size 7)",
+        "    - 1",
+        "    - 2",
+        "    - 3",
+        "    - 4",
+        "    - 5",
+        "    - 6",
+        "    - 7",
+        "  - key 7",
+        "  - leaf (size 8)",
+        "    - 8",
+        "    - 9",
+        "    - 10",
+        "    - 11",
+        "    - 12",
+        "    - 13",
+        "    - 14",
+        "    - 15",
+        "  - key 15",
+        "  - leaf (size 7)",
+        "    - 16",
+        "    - 17",
+        "    - 18",
+        "    - 19",
+        "    - 20",
+        "    - 21",
+        "    - 22",
+        "  - key 22",
+        "  - leaf (size 8)",
+        "    - 23",
+        "    - 24",
+        "    - 25",
+        "    - 26",
+        "    - 27",
+        "    - 28",
+        "    - 29",
+        "    - 30",
+        "db > ",
+    ]
+
     print(f"result: {result}")
+    assert result[30:] == expected_output
+    print(f"{sys._getframe().f_code.co_name} passed")
 
 
 if len(sys.argv)<2:

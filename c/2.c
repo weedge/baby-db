@@ -22,7 +22,6 @@ typedef struct {
   StatementType type;
 } Statement;
 
-
 InputBuffer* new_input_buffer() {
   InputBuffer* input_buffer = malloc(sizeof(InputBuffer));
   input_buffer->buffer = NULL;
@@ -49,8 +48,8 @@ void read_input(InputBuffer* input_buffer) {
 }
 
 void close_input_buffer(InputBuffer* input_buffer) {
-    free(input_buffer->buffer);
-    free(input_buffer);
+  free(input_buffer->buffer);
+  free(input_buffer);
 }
 
 MetaCommandResult do_meta_command(InputBuffer* input_buffer) {
