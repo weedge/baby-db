@@ -7,7 +7,7 @@ TODO
 *~
 __pycache__
 .idea/
-.idea/
+.DS_Store
 go.work
 __debug_bin*
 # macOS

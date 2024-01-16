@@ -260,7 +260,7 @@ func initializeLeafNode(node []byte) {
 func initializeInternalNode(node []byte) {
 	setNodeType(node, NODE_INTERNAL)
 	setNodeRoot(node, false)
-	*leafNodeNumCells(node) = 0
+	*internalNodeNumKeys(node) = 0
 }
 
 func getPage(pager *Pager, pageNum uint32) []byte {

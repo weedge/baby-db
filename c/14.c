@@ -136,7 +136,7 @@ const uint32_t LEAF_NODE_LEFT_SPLIT_COUNT =
     (LEAF_NODE_MAX_CELLS + 1) - LEAF_NODE_RIGHT_SPLIT_COUNT;
 
 /*
- * 内部节点头部布局
+ * Internal Node Header Layout
  */
 const uint32_t INTERNAL_NODE_NUM_KEYS_SIZE = sizeof(uint32_t);
 const uint32_t INTERNAL_NODE_NUM_KEYS_OFFSET = COMMON_NODE_HEADER_SIZE;
@@ -148,7 +148,7 @@ const uint32_t INTERNAL_NODE_HEADER_SIZE = COMMON_NODE_HEADER_SIZE +
                                            INTERNAL_NODE_RIGHT_CHILD_SIZE;
 
 /*
- * 内部节点主体布局
+ * Internal Node Body Layout
  */
 const uint32_t INTERNAL_NODE_KEY_SIZE = sizeof(uint32_t);
 const uint32_t INTERNAL_NODE_CHILD_SIZE = sizeof(uint32_t);
@@ -796,12 +796,13 @@ void db_close(Table* table) {
 
 void print_prompt() { printf("db > "); }
 
-void read_input(InputBuffer* input_buffer) {
+void read_input(Table* table, InputBuffer* input_buffer) {
   ssize_t bytes_read =
       getline(&(input_buffer->buffer), &(input_buffer->buffer_length), stdin);
 
   if (bytes_read <= 0) {
-    printf("Error reading input\n");
+    printf("Error reading input, bytes_read:%zd\n", bytes_read);
+    db_close(table);
     exit(EXIT_FAILURE);
   }
 
@@ -991,11 +992,14 @@ ExecuteResult execute_select(Statement* statement, Table* table) {
   Cursor* cursor = table_start(table);
 
   Row row;
+  uint32_t i = 0;
   while (!(cursor->end_of_table)) {
     deserialize_row(cursor_value(cursor), &row);
     print_row(&row);
     cursor_advance(cursor);
+    i++;
   }
+  printf("total rows: %d\n", i);
 
   free(cursor);
   return EXECUTE_SUCCESS;
@@ -1022,7 +1026,10 @@ int main(int argc, char* argv[]) {
   InputBuffer* input_buffer = new_input_buffer();
   while (1) {
     print_prompt();
-    read_input(input_buffer);
+    read_input(table, input_buffer);
+    if (input_buffer->input_length == 0) {
+      continue;
+    }
 
     if (input_buffer->buffer[0] == '.') {
       switch (do_meta_command(input_buffer, table)) {

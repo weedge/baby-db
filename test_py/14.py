@@ -158,7 +158,8 @@ def test_prints_structure_of_7_leaf_node_btree(db_file=""):
         "db > ",
     ]
 
-    print(f"result: {result}")
+    #print(f"result: {result}")
+    print(f"result[64:]: {result[64:]}")
     assert result[64:] == expected_output
     print(f"{sys._getframe().f_code.co_name} passed")
 
